@@ -20,7 +20,19 @@ Boucher Brothers "BB back drop" look.
 
 ## Where guest data lives
 
-Only in the browser of the tablet it was entered on. None of it is in this repository, and it never
+Only in the browser of the tablet it was entered on. It stays there after the website is closed or the tablet
+restarts, and the page asks the browser to keep it for good.
+
+- **Saved guest profiles**: every guest checked in to the main pool is saved, with any preferences added.
+- **Archived**: once a day, when that day's lists are on the tablet, guests with no main pool check-in for a
+  week, or past their check-out date, move here. Hotel guests with preferences stay in Saved. Nothing is
+  deleted, and checking a guest in again moves them back.
+- Always open the site the same way, from the home-screen icon. The icon and a Safari tab keep separate copies,
+  so guests saved in one don't appear in the other. Private browsing keeps nothing.
+- The address is part of where the data is kept: if the website moves to a new address, move the guests with
+  **Copy backup** on the old address and **Restore backup** on the new one.
+
+ None of it is in this repository, and it never
 reaches the claude.ai Guest Book or other devices. Use **Copy backup** on the Guest Book tab now and
 then, and paste the backup somewhere safe. Clearing Safari's website data erases it.
 

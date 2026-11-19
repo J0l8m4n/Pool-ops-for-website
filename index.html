@@ -722,10 +722,10 @@
   <div class="v-head club-head"><h2 class="v-title">Ocean Club members</h2><span class="v-sub" id="clubCount"></span>
     <button class="add-mem-btn" id="addClub">+ Add member</button></div>
   <div id="clubList"></div>
-  <div class="v-head" style="margin-top:22px"><h2 class="v-title">Saved guest profiles</h2><span class="v-sub">Saved automatically at main pool check-in. Hotel guests are cleared after 7 days with no check-in, or the day after check-out, unless you've added preferences. Residents move to Archived instead.</span></div>
+  <div class="v-head" style="margin-top:22px"><h2 class="v-title">Saved guest profiles</h2><span class="v-sub" id="savedRules">Saved automatically at main pool check-in. Hotel guests are cleared after 7 days with no check-in, or the day after check-out, unless you've added preferences. Residents move to Archived instead.</span></div>
   <div id="list"></div>
   <div class="v-head" style="margin-top:22px"><h2 class="v-title">Archived profiles</h2><span class="v-sub" id="archCount"></span>
-    <span class="v-sub" style="flex-basis:100%">Residents with no main pool check-in for a week. Nothing here is deleted.</span></div>
+    <span class="v-sub" id="archRules" style="flex-basis:100%">Residents with no main pool check-in for a week. Nothing here is deleted.</span></div>
   <div id="archList"></div>
   <div class="backup">
     <span id="saveNote">Changes save to the guest book database and show on every device you open it on.</span>
@@ -1378,6 +1378,12 @@ async function standaloneWeatherUpdate() {
 function startStandalone() {
   setSync("local", "Saved on this tablet");
   document.getElementById("saveNote").textContent = "Everything is saved on this tablet only. Use Copy backup now and then to keep a copy.";
+  document.getElementById("savedRules").textContent = "Saved automatically at main pool check-in and kept on this tablet, even after the website is closed. "
+    + "Guests with no main pool check-in for a week, or past their check-out date, move to Archived. Hotel guests you've added preferences to stay here.";
+  document.getElementById("archRules").textContent = "Guests with no main pool check-in for a week, or past their check-out date. Nothing here is deleted, and checking them in again moves them back.";
+  // Ask the browser to keep this tablet's guests even when it is short of space or the site goes unused for a while.
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
+  pruneProfiles();
   try { const s = JSON.parse(localStorage.getItem("gb-ltg-staff") || "null"); if (s) LTG.staff = s; } catch (e) {}
   standaloneWeatherUpdate(); glmCheck();
   setInterval(standaloneWeatherUpdate, 15 * 60 * 1000);
@@ -2493,7 +2499,10 @@ const lastCheckIn = f => [...(f.visits || []), f.lastVisitDay, f.savedAt, f.rest
 const pastDepart = f => !!(f.depart && /^\d{4}-\d{2}-\d{2}$/.test(f.depart) && dayDiff(f.depart, DAY_KEY) >= 1);
 let prunedDay = null;
 function pruneProfiles() {
-  if (!db || !live || !rosterLive || prunedDay === DAY_KEY) return;
+  // On claude.ai: once the database and today's lists have loaded. On the website: once today's lists are on this
+  // tablet, and nothing is deleted there; hotel guests move to Archived as well.
+  if (prunedDay === DAY_KEY) return;
+  if (STANDALONE ? !(ROSTER.hotel?.date === DAY_KEY || ROSTER.res?.date === DAY_KEY) : (!db || !live || !rosterLive)) return;
   prunedDay = DAY_KEY;
   const gone = [], archive = [];
   for (const f of FAMILIES) {
@@ -2501,7 +2510,7 @@ function pruneProfiles() {
     const last = lastCheckIn(f), stale = !!last && dayDiff(last, DAY_KEY) >= STALE_DAYS;
     if (isResident(f)) { if (stale || (f.auto && pastDepart(f))) archive.push(f); continue; }
     if (!f.auto || rosterFor(f)) continue;
-    if (stale || pastDepart(f)) gone.push(f);
+    if (stale || pastDepart(f)) (STANDALONE ? archive : gone).push(f);
   }
   if (!gone.length && !archive.length) return;
   const ids = new Set(gone.map(f => f.id));
@@ -2586,7 +2595,9 @@ function saveRoster(found) {
     ROSTER[kind] = { date: DAY_KEY, uploadedAt: now, files: found[kind].files, guests: found[kind].guests };
     if (db) { const body = ROSTER[kind]; queueWrite("roster:" + kind, () => db.doc("roster/" + DAY_KEY + "-" + kind).set(body)).catch(onWriteError); }
   }
+  resetMatches();          // match saved guests against the new lists, not the earlier ones
   saveRosterLocal();
+  if (STANDALONE) pruneProfiles();
   if (db) db.collection("roster").get().then(s => s.docs.forEach(d => {
     if (!d.id.startsWith(DAY_KEY)) queueWrite("rosterdel:" + d.id, () => db.doc("roster/" + d.id).delete()).catch(() => {});
   })).catch(() => {});

@@ -650,6 +650,11 @@
   .kpi:hover, .gcard.compact:hover { border-color: #b9cee2; box-shadow: 0 1px 2px rgba(22,60,96,.08), 0 10px 26px rgba(22,60,96,.13); }
   .kpi.alert:hover { border-color: var(--danger-line); border-top-color: var(--red); }
   .gcard.compact { border-radius: 12px; }
+  .gcard.here-mini { padding: 14px 16px; margin-bottom: 8px; cursor: pointer; }
+  .gcard.here-mini .g-line { display: flex; align-items: center; gap: 10px; }
+  .gcard.here-mini .g-name { flex: 1; min-width: 0; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gcard.here-mini.needs { border-left: 4px solid var(--red); }
+  .gcard.here-mini:hover { border-color: #b9cee2; }
   /* the checklist column scrolls on its own: give the card's shadow room so it isn't cut off */
   @media (min-width: 900px) { .here-side { padding: 0 8px 28px; margin: 0 -8px; } }
 
@@ -1982,7 +1987,7 @@ function guestCard(g, opts = {}) {
     ${serviceHTML(k, ci)}
     ${sharingHTML(g, opts.openShare)}
     <div class="g-foot"><button class="g-link" data-prefs="${esc(k)}">${fam ? "Edit preferences" : "+ Add preferences"}</button>
-      ${ci ? `<button class="g-link" data-seat="${esc(k)}">${ci.seat ? "Change seat" : "Add seat"}</button>` : ""}</div>
+      ${ci ? `<button class="g-link" data-seat="${esc(k)}">${ci.seat ? "Change seat" : "Add seat"}</button>` : ""}${opts.hideBtn || ""}</div>
   </div>`;
 }
 // Check-in tab card: the facts needed at the gate, plus the service line once checked in. Tapping it shows the rest.
@@ -2064,15 +2069,42 @@ function renderCheckin(q) {
   list.innerHTML = `<div class="ci-hint">Type a last name or room number above to find a guest and check them in.</div>` + (n
     ? `<div class="acts" style="max-width:340px;margin:0 auto"><button class="act" data-goto="today">See the ${n} guest${n === 1 ? "" : "s"} here now →</button></div>` : "");
 }
+// Here now: each checked-in guest is just their first and last name (a red edge when they need service) until tapped;
+// tapped, the full card. Whenever a new guest is checked in, on this tablet or another, open cards close again.
+const hereOpen = new Set();
+let hereSeen = null;                       // check-ins already shown on Here now, to notice new ones
+function noteNewCheckins() {
+  const keys = Object.keys(CHECKINS);
+  if (hereSeen && keys.some(k => !hereSeen.has(k))) hereOpen.clear();
+  hereSeen = new Set(keys);
+}
+const firstLast = n => { const m = /^([^,]+),\s*(.+)$/.exec(n || ""); return m ? m[2] + " " + m[1] : (n || ""); };
+function toggleHere(k) {
+  hereOpen.has(k) ? hereOpen.delete(k) : hereOpen.add(k);
+  renderHere();
+  const el = [...document.querySelectorAll("#hereMain [data-hexpand], #hereMain [data-open]")].find(x => (x.dataset.hexpand || x.dataset.open) === k);
+  if (el) el.focus({ preventScroll: true });
+}
 function checkedCards() {
   const byKey = new Map(allGuests().map(g => [gKey(g), g]));
   const done = Object.values(CHECKINS).sort((a, b) => (!!b.need - !!a.need) || b.at.localeCompare(a.at));
-  return done.map(e => byKey.has(e.key) ? guestCard(byKey.get(e.key))
-    : `<div class="gcard in${e.need ? " needs" : ""}"><div class="g-top"><div class="g-who"><div class="g-name">${esc(e.name)}</div><span class="g-room">${esc(e.room)}</span>
+  return done.map(e => {
+    const g = byKey.get(e.key);
+    if (!hereOpen.has(e.key)) {
+      const nm = g ? guestPerson(g) : firstLast(e.name);
+      return `<div class="gcard here-mini${e.need ? " needs" : ""}" data-hexpand="${esc(e.key)}" tabindex="0" role="button" aria-expanded="false"
+          aria-label="${esc(nm)}${e.need ? ", needs " + esc(e.need.what) : ""}. Show details">
+        <div class="g-line"><span class="g-name">${esc(nm)}</span><span class="g-more" aria-hidden="true"></span></div></div>`;
+    }
+    const hide = `<button class="g-link" data-hcollapse="${esc(e.key)}">Hide details</button>`;
+    return g ? guestCard(g, { hideBtn: hide })
+      : `<div class="gcard in${e.need ? " needs" : ""}"><div class="g-top"><div class="g-who"><div class="g-name">${esc(e.name)}</div><span class="g-room">${esc(e.room)}</span>
        ${e.seat ? `<div class="g-seat">${esc(seatText(e.seat))}</div>` : ""}</div>
-       <button class="ci-btn done" data-ci="${esc(e.key)}">✓ ${esc(tStr(e.at))}</button></div>${serviceHTML(e.key, e)}</div>`);
+       <button class="ci-btn done" data-ci="${esc(e.key)}">✓ ${esc(tStr(e.at))}</button></div>${serviceHTML(e.key, e)}<div class="g-foot">${hide}</div></div>`;
+  });
 }
 function renderHere() {
+  noteNewCheckins();
   const all = Object.values(CHECKINS), needN = all.filter(e => e.need).length;
   document.getElementById("hereMain").innerHTML = `<div class="here-h"><b>Checked in now · ${all.length}</b>${needN ? `<span class="need-n">${needN} need service</span>` : ""}</div>` +
     (all.length ? checkedCards().join("")
@@ -2094,9 +2126,9 @@ function shortLast(e, g) {
 function roomShort(e, g) { return g ? (g.src === "hotel" ? (g.room || "TBA") : g.src === "club" ? "OC" : g.room) : String(e.room || "").replace(/^Rm\s*| · .*$/g, ""); }
 function hourLabel(d) { return d.toLocaleTimeString("en-US", { hour: "numeric" }).replace(/\s/g, " "); }
 const clock = iso => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).replace(/\s/g, "").toLowerCase();
-// One line per checked-in party, room first, then where they're sitting (section and chair numbers only):
-//   "1408 Berber Section 4, Chairs 5-8 ✅"   or   "1408 Berber Section 4, Chairs 5-8 🚫; needs water & food at 4:12pm"
-// Parties needing service go first. A party with no seat recorded is just "1408 Berber ✅".
+// One line per checked-in party: last name and unit, then where they're sitting (section and chair numbers only):
+//   "Berber, 1408; Section 4, Chairs 5-8 ✅"   or   "Berber, 1408; Section 4, Chairs 5-8 🚫; needs water & food at 4:12pm"
+// Parties needing service go first. A party with no seat recorded is just "Berber, 1408; ✅".
 function checklistSeat(s) {
   if (!s) return "";
   const sec = s.section ? (/^sec(tion)?\b/i.test(s.section) ? s.section : "Section " + s.section) : "";
@@ -2105,7 +2137,7 @@ function checklistSeat(s) {
 }
 function checklistLines(rows) {
   const need = rows.filter(r => r.need).sort((a, b) => a.need.at.localeCompare(b.need.at)), ok = rows.filter(r => !r.need);
-  const who = r => [r.room, r.name, checklistSeat(r.seat)].filter(Boolean).join(" ");
+  const who = r => [r.name, r.room].filter(Boolean).join(", ") + ";" + (checklistSeat(r.seat) ? " " + checklistSeat(r.seat) : "");
   return [...need.map(r => `${who(r)} 🚫; needs ${r.need.what} at ${clock(r.need.at)}`), ...ok.map(r => `${who(r)} ✅`)];
 }
 function checklistText(rows) {
@@ -2866,6 +2898,8 @@ suggEl.addEventListener("click", e => { const b = e.target.closest("[data-pick]"
 document.addEventListener("click", e => { if (!e.target.closest(".qwrap")) suggEl.hidden = true; });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && !sheetBg.hidden) { e.preventDefault(); closeSheet(); return; }
+  const hx = e.target.closest && e.target.closest("[data-hexpand]");
+  if (hx && e.target === hx && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleHere(hx.dataset.hexpand); return; }
   const ex = e.target.closest && e.target.closest("[data-expand]");
   if (ex && e.target === ex && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleCard(ex.dataset.expand); return; }
   const card = e.target.closest && e.target.closest("[data-open]");
@@ -2929,6 +2963,8 @@ for (const id of ["checkin", "brief", "hereView", "dashView"]) document.getEleme
   const pf = e.target.closest("[data-prefs]"); if (pf) { editPrefs(pf.dataset.prefs); return; }
   const full = e.target.closest("[data-full]"); if (full) { openGuest(full.dataset.full); return; }
   const st = e.target.closest("[data-seat]"); if (st) { changeSeat(st.dataset.seat); return; }
+  const hc = e.target.closest("[data-hcollapse]"); if (hc) { toggleHere(hc.dataset.hcollapse); return; }
+  const hx = e.target.closest("[data-hexpand]"); if (hx) { toggleHere(hx.dataset.hexpand); return; }
   const ex = e.target.closest("[data-expand]");
   if (ex && !e.target.closest("button, a, input, select, textarea, summary")) { toggleCard(ex.dataset.expand); return; }
   const card = e.target.closest("[data-open]");

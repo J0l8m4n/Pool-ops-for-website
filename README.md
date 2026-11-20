@@ -6,6 +6,14 @@ Address, once GitHub Pages is on: https://j0l8m4n.github.io/Pool-ops-for-website
 
 On the tablet, open the address in Safari and use **Share > Add to Home Screen**, so it opens like an app.
 
+## DEMO MODE
+
+https://j0l8m4n.github.io/Pool-ops-for-website/demo/ is a demo of the same Guest Book with 300 made-up guests, for
+showing the app to people. A striped DEMO MODE bar is on every screen, and its **Demo guide** walks through a shift.
+It never touches real data: it saves only under its own "gb-demo:" names on the device, real lists can't be uploaded,
+and demo and real backups refuse each other. Weather and lightning are live. **Reset demo** starts it over.
+`demo/index.html` is built from Pool-and-beach-Ops (`docs/demo-mode.md` there).
+
 ## What it does
 
 The same Guest Book staff use on claude.ai: Today, Check-in, Here now and the Guest Book, with the

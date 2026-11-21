@@ -658,17 +658,13 @@
   .gcard.here-mini:hover { border-color: #b9cee2; }
   .ntag.warn { color: var(--red); }
   .pill.warnf, .gcard.compact .pill.warnf { background: var(--danger-bg); color: var(--red); border-color: var(--danger-line); font-weight: 700; }
-  /* DEMO MODE: a striped bar on every screen, a DEMO tag in the header and on every pop-up */
-  .demo-bar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 8px 16px;
-              background: repeating-linear-gradient(135deg, #ffd23f 0 18px, #ffc21a 18px 36px); color: #1a1a1a;
-              font: 600 14px/1.3 var(--font); border-bottom: 2px solid #1a1a1a; }
-  .demo-bar b { font: 800 14px/1 var(--font-head); letter-spacing: .14em; background: #1a1a1a; color: #ffd23f; padding: 6px 10px; border-radius: 4px; }
-  .demo-bar span { flex: 1; min-width: 200px; }
-  .demo-bar button { border: 1.5px solid #1a1a1a; background: rgba(255,255,255,.88); color: #1a1a1a; font: 700 13px var(--font);
-                     border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  /* DEMO MODE: a DEMO tag in the header and on every pop-up; the demo's two buttons sit in the header */
   body.demo .draft-tag { background: #ffd23f; border-color: #ffd23f; color: #1a1a1a; text-shadow: none; }
   body.demo .sheet-h b::before { content: "DEMO · "; color: var(--warn-ink); }
-  @media (min-width: 900px) { body.demo .nav, body.demo .here-side { top: 58px; } }
+  .demo-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .demo-acts button { border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.12); color: #fff; font: 600 12px/1.2 var(--font);
+                      border-radius: 999px; padding: 4px 11px; cursor: pointer; }
+  .demo-acts button:hover { background: rgba(255,255,255,.24); }
   .demo-intro { margin: 6px 0 4px; color: var(--muted); font-size: 14px; }
   .demo-steps { margin: 6px 0 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 8px; }
   .demo-steps li { counter-increment: step; display: flex; gap: 12px; align-items: center; background: var(--blue-soft); border-radius: 10px; padding: 10px 12px; }
@@ -796,7 +792,7 @@ document.documentElement.lang = "en";
 //     read or written (see `store`);
 //   - real lists can't be uploaded, and demo and real backups can't be restored into each other;
 //   - weather and lightning are live (the website's own checks); a lightning report reaches this device only;
-//   - a striped DEMO MODE bar sits on top of every screen, and copied checklists say DEMO.
+//   - the header, tab title and every pop-up say DEMO, and copied checklists say DEMO.
 const DEMO_DATA = window.GB_DEMO && typeof window.claude === "undefined" ? window.GB_DEMO : null;
 const DEMO = !!DEMO_DATA, DEMO_PREFIX = "gb-demo:";
 function demoStorage() {
@@ -1447,8 +1443,8 @@ function startDemo() {
   document.body.classList.add("demo");
   document.title = "DEMO · Guest Book";
   document.querySelector(".draft-tag").textContent = "DEMO";
-  document.body.insertAdjacentHTML("afterbegin", `<div class="demo-bar" role="note" id="demoBar"><b>DEMO MODE</b>
-    <span>All guests are fictional · Not real hotel records · Saved on this device only</span>
+  document.querySelector(".draft-tag").title = "DEMO MODE: every guest is fictional. Not real hotel records.";
+  document.querySelector("header .hmeta").insertAdjacentHTML("beforeend", `<div class="demo-acts">
     <button type="button" id="demoGuideBtn">Demo guide</button><button type="button" id="demoResetBtn">Reset demo</button></div>`);
   document.getElementById("demoGuideBtn").addEventListener("click", openDemoGuide);
   document.getElementById("demoResetBtn").addEventListener("click", () => openSheet({ title: "Reset the demo?", focus: false,

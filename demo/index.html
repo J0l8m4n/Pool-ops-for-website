@@ -670,10 +670,14 @@
   .act.dep { background: var(--red); border-color: var(--red); color: #fff; }
   .dep-sec { margin-top: 22px; }
   .dep-list { background: var(--white); border: 1px solid #d3e0ec; border-radius: 12px; box-shadow: var(--lift); overflow: hidden; }
-  .dep-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; padding: 11px 16px; }
+  .dep-row { padding: 11px 16px; }
+  .dep-l1, .dep-l2 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; }
+  .dep-l2 { margin-top: 3px; }
+  .dep-l2 .g-link { margin-left: auto; }
   .dep-row + .dep-row { border-top: 1px solid var(--blue-soft); }
   .dep-name { flex: 1; min-width: 140px; font-weight: 650; }
   .dep-room { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .dep-seat { font-size: 14px; font-weight: 600; color: var(--blue-dark); font-variant-numeric: tabular-nums; }
   .dep-time { font-size: 14px; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
   .ci-btn.again { background: var(--white); color: var(--blue); border: 1.5px solid var(--blue); }
   .svc.left { background: #f1f3f6; color: var(--muted); }
@@ -2284,13 +2288,22 @@ function checkedCards() {
   });
 }
 const departBtn = (k, nm) => `<button type="button" class="dep-btn" data-depart="${esc(k)}" aria-label="Depart ${esc(nm)}">Depart</button>`;
+// The Departed list says where each guest was sitting: the section and how many chairs ("Section 7 · 2 chairs").
+function departedSeat(s) {
+  const sec = s && s.section ? (/^sec(tion)?\b/i.test(s.section) ? s.section : "Section " + s.section) : "";
+  const n = chairsOf({ seat: s });
+  const chairs = n === null ? "" : `${n} chair${n === 1 ? "" : "s"}`;
+  return [sec, chairs].filter(Boolean).join(" · ") || "No seat recorded";
+}
 function departedHTML() {
   const byKey = new Map(allGuests().map(g => [gKey(g), g]));
   const gone = Object.values(CHECKINS).filter(e => e.departedAt).sort((a, b) => b.departedAt.localeCompare(a.departedAt));
   return `<section class="dep-sec" aria-label="Departed today"><div class="here-h"><b>Departed · ${gone.length}</b></div>` +
     (gone.length ? `<div class="dep-list">${gone.map(e => { const g = byKey.get(e.key);
-        return `<div class="dep-row"><span class="dep-name">${esc(g ? guestPerson(g) : firstLast(e.name))}</span><span class="dep-room">${esc(e.room)}</span>
-          <span class="dep-time">Departed ${esc(tStr(e.departedAt))}</span><button type="button" class="g-link" data-undepart="${esc(e.key)}">Undo</button></div>`; }).join("")}</div>`
+        return `<div class="dep-row">
+          <div class="dep-l1"><span class="dep-name">${esc(g ? guestPerson(g) : firstLast(e.name))}</span><span class="dep-time">Departed ${esc(tStr(e.departedAt))}</span></div>
+          <div class="dep-l2"><span class="dep-room">${esc(e.room)}</span><span class="dep-seat">${esc(departedSeat(e.seat))}</span>
+            <button type="button" class="g-link" data-undepart="${esc(e.key)}">Undo</button></div></div>`; }).join("")}</div>`
       : `<div class="ci-hint">Nobody has departed yet. Tap the red Depart button when a guest leaves the pool.</div>`) + `</section>`;
 }
 // Pool Number: the chairs entered for everyone checked in now (departed guests don't count). It is worked out from the

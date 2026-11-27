@@ -2288,12 +2288,13 @@ function checkedCards() {
   });
 }
 const departBtn = (k, nm) => `<button type="button" class="dep-btn" data-depart="${esc(k)}" aria-label="Depart ${esc(nm)}">Depart</button>`;
-// The Departed list says where each guest was sitting: the section and how many chairs ("Section 7 · 2 chairs").
+// The Departed list says where each guest was sitting: the section and the chair numbers ("Section 8 • Chairs 1-8",
+// or "Chair 30" for one chair, as on the hourly checklist).
 function departedSeat(s) {
   const sec = s && s.section ? (/^sec(tion)?\b/i.test(s.section) ? s.section : "Section " + s.section) : "";
-  const n = chairsOf({ seat: s });
-  const chairs = n === null ? "" : `${n} chair${n === 1 ? "" : "s"}`;
-  return [sec, chairs].filter(Boolean).join(" · ") || "No seat recorded";
+  const nos = s && s.chairNos ? String(s.chairNos).trim() : "";
+  const chairs = nos ? (/[,&\s\-–]/.test(nos) ? "Chairs " : "Chair ") + nos : "";
+  return [sec, chairs].filter(Boolean).join(" • ") || "No seat recorded";
 }
 function departedHTML() {
   const byKey = new Map(allGuests().map(g => [gKey(g), g]));

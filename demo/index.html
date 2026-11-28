@@ -657,9 +657,24 @@
   .gcard.here-mini.needs { border-left: 4px solid var(--red); }
   .gcard.here-mini:hover { border-color: #b9cee2; }
   /* Pool Number: the chairs entered for everyone checked in now, at the top of Here now */
-  .pool-num { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; margin: 2px 0 16px; padding: 12px 18px;
+  .pool-num { display: flex; align-items: center; gap: 12px 16px; margin: 2px 0 16px; padding: 12px 18px;
               background: var(--white); border: 1px solid #d3e0ec; border-left: 5px solid var(--pool); border-radius: 12px; box-shadow: var(--lift); }
-  .pool-num > span { font: 700 19px/1.2 var(--font-head); color: var(--ink); }
+  .pool-txt { flex: 1; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
+  .pool-txt > span { font: 700 19px/1.2 var(--font-head); color: var(--ink); }
+  /* the occupancy circle: a thin ring on a lighter track of the same color, the percentage in the middle */
+  .pool-ring { position: relative; flex: none; width: 84px; height: 84px; }
+  .pool-ring svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .pool-ring circle { fill: none; stroke-width: 3.4; }
+  .pool-ring .trk { stroke: var(--pool-line); }
+  .pool-ring .val { stroke: var(--pool); stroke-linecap: round; }
+  .pool-ring.busy .trk { stroke: #f3e0bd; } .pool-ring.busy .val { stroke: #c27803; }
+  .pool-ring.full .trk { stroke: var(--danger-line); } .pool-ring.full .val { stroke: var(--red); }
+  .pool-pct { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .pool-pct strong { font: 800 20px/1 var(--font-head); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .pool-pct span { margin-top: 3px; font-size: 11px; line-height: 1; color: var(--muted); }
+  .pool-ring.full .pool-pct strong { font-size: 17px; }   /* 100% and over: three digits */
+  @media (max-width: 520px) { .pool-num { padding: 10px 12px 10px 14px; } .pool-ring { width: 70px; height: 70px; } .pool-pct strong { font-size: 17px; }
+    .pool-ring.full .pool-pct strong { font-size: 14px; } }
   .pool-num b { font: 800 32px/1 var(--font-head); color: var(--ink); font-variant-numeric: tabular-nums; }
   .pool-num small { flex-basis: 100%; color: var(--muted); font-size: 13px; }
   .pool-num .pool-miss { color: var(--warn-ink); font-weight: 650; }
@@ -2321,9 +2336,19 @@ function poolNumberHTML(all) {
   const open = POOL_CHAIRS - total, plural = n => n === 1 ? "chair" : "chairs";
   const room = open >= 0 ? `<span class="pool-open">${open} ${plural(open)} open</span>`
     : `<span class="pool-over">${-open} ${plural(-open)} over the ${POOL_CHAIRS}</span>`;
-  return `<div class="pool-num${open < 0 ? " over" : ""}" id="poolNum" aria-live="polite"><span>Pool Number:</span><b>${total}</b><em>/ ${POOL_CHAIRS}</em>
+  return `<div class="pool-num${open < 0 ? " over" : ""}" id="poolNum" aria-live="polite"><div class="pool-txt"><span>Pool Number:</span><b>${total}</b><em>/ ${POOL_CHAIRS}</em>
     <small>${room} · chairs entered for ${all.length} checked-in ${all.length === 1 ? "party" : "parties"}${missing
-      ? ` · <span class="pool-miss">${missing} with no chairs entered</span>` : ""}</small></div>`;
+      ? ` · <span class="pool-miss">${missing} with no chairs entered</span>` : ""}</small></div>${occupancyRing(total)}</div>`;
+}
+// The occupancy circle beside Pool Number: the share of the pool's chairs in use. Pool blue while there's room, amber
+// from 80%, red when full or over. Past 100% the circle stays closed and the figure says how far over.
+function occupancyRing(total) {
+  const pct = Math.round(total / POOL_CHAIRS * 100), lvl = pct >= 100 ? "full" : pct >= 80 ? "busy" : "ok";
+  const arc = pct <= 0 ? "" : pct >= 100 ? `<circle class="val" cx="18" cy="18" r="15.9155"/>`
+    : `<circle class="val" cx="18" cy="18" r="15.9155" stroke-dasharray="${pct} 100"/>`;
+  return `<div class="pool-ring ${lvl}" id="poolRing" role="img" title="${total} of ${POOL_CHAIRS} chairs taken"
+    aria-label="Pool occupancy: ${pct}% of ${POOL_CHAIRS} chairs (${total} taken)"><svg viewBox="0 0 36 36" aria-hidden="true">
+    <circle class="trk" cx="18" cy="18" r="15.9155"/>${arc}</svg><div class="pool-pct" aria-hidden="true"><strong>${pct}%</strong><span>full</span></div></div>`;
 }
 function renderHere() {
   noteNewCheckins();

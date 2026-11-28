@@ -655,6 +655,49 @@
   .gcard.here-mini .g-name { flex: 1; min-width: 0; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gcard.here-mini.needs { border-left: 4px solid var(--red); }
   .gcard.here-mini:hover { border-color: #b9cee2; }
+  /* Pool Number: the chairs entered for everyone checked in now, at the top of Here now */
+  .pool-num { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; margin: 2px 0 16px; padding: 12px 18px;
+              background: var(--white); border: 1px solid #d3e0ec; border-left: 5px solid var(--pool); border-radius: 12px; box-shadow: var(--lift); }
+  .pool-num > span { font: 700 19px/1.2 var(--font-head); color: var(--ink); }
+  .pool-num b { font: 800 32px/1 var(--font-head); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .pool-num small { flex-basis: 100%; color: var(--muted); font-size: 13px; }
+  .pool-num .pool-miss { color: var(--warn-ink); font-weight: 650; }
+  /* Departed: a red button on each checked-in guest; the Departed section lists who left and when */
+  .dep-btn { flex: none; border: 0; background: var(--red); color: #fff; font: 700 13px/1 var(--font); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+  .dep-btn:hover { background: #9a1d13; }
+  .g-foot .dep-btn { margin-right: 6px; }
+  .act.dep { background: var(--red); border-color: var(--red); color: #fff; }
+  .dep-sec { margin-top: 22px; }
+  .dep-list { background: var(--white); border: 1px solid #d3e0ec; border-radius: 12px; box-shadow: var(--lift); overflow: hidden; }
+  .dep-row { padding: 11px 16px; }
+  .dep-l1, .dep-l2 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; }
+  .dep-l2 { margin-top: 3px; }
+  .dep-l2 .g-link { margin-left: auto; }
+  .dep-row + .dep-row { border-top: 1px solid var(--blue-soft); }
+  .dep-name { flex: 1; min-width: 140px; font-weight: 650; }
+  .dep-room { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .dep-seat { font-size: 14px; font-weight: 600; color: var(--blue-dark); font-variant-numeric: tabular-nums; }
+  .dep-time { font-size: 14px; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .ci-btn.again { background: var(--white); color: var(--blue); border: 1.5px solid var(--blue); }
+  .svc.left { background: #f1f3f6; color: var(--muted); }
+  .ntag.warn { color: var(--red); }
+  .pill.warnf, .gcard.compact .pill.warnf { background: var(--danger-bg); color: var(--red); border-color: var(--danger-line); font-weight: 700; }
+  /* DEMO MODE: a DEMO tag in the header and on every pop-up; the demo's two buttons sit in the header */
+  body.demo .draft-tag { background: #ffd23f; border-color: #ffd23f; color: #1a1a1a; text-shadow: none; }
+  body.demo .sheet-h b::before { content: "DEMO · "; color: var(--warn-ink); }
+  .demo-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .demo-acts button { border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.12); color: #fff; font: 600 12px/1.2 var(--font);
+                      border-radius: 999px; padding: 4px 11px; cursor: pointer; }
+  .demo-acts button:hover { background: rgba(255,255,255,.24); }
+  .demo-intro { margin: 6px 0 4px; color: var(--muted); font-size: 14px; }
+  .demo-steps { margin: 6px 0 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 8px; }
+  .demo-steps li { counter-increment: step; display: flex; gap: 12px; align-items: center; background: var(--blue-soft); border-radius: 10px; padding: 10px 12px; }
+  .demo-steps li::before { content: counter(step); flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--blue); color: #fff;
+                           display: grid; place-items: center; font: 700 13px var(--font); }
+  .demo-steps li div { flex: 1; min-width: 0; }
+  .demo-steps b { display: block; font-size: 15px; }
+  .demo-steps span { display: block; font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+  .demo-steps .act { flex: none; }
   /* the checklist column scrolls on its own: give the card's shadow room so it isn't cut off */
   @media (min-width: 900px) { .here-side { padding: 0 8px 28px; margin: 0 -8px; } }
 
@@ -766,6 +809,28 @@
 // Tests: tests/*.test.js in the Pool-and-beach-Ops repo run this page against a stand-in database.
 document.documentElement.lang = "en";
 
+// ================= DEMO MODE (the demo page only: site/demo/index.html) =================
+// The demo page sets window.GB_DEMO to a made-up dataset (demo/demo-data.json, from tools/make-demo-data.js) before this
+// script. The real website and the claude.ai Guest Book never set it, and on claude.ai it is ignored. In the demo:
+//   - nothing connects to the claude.ai database, and the page saves only under "gb-demo:" keys, so real data is never
+//     read or written (see `store`);
+//   - real lists can't be uploaded, and demo and real backups can't be restored into each other;
+//   - weather and lightning are live (the website's own checks); a lightning report reaches this device only;
+//   - the header, tab title and every pop-up say DEMO, and copied checklists say DEMO.
+const DEMO_DATA = window.GB_DEMO && typeof window.claude === "undefined" ? window.GB_DEMO : null;
+const DEMO = !!DEMO_DATA, DEMO_PREFIX = "gb-demo:";
+function demoStorage() {
+  const ls = window.localStorage;
+  return { getItem: k => ls.getItem(DEMO_PREFIX + k), setItem: (k, v) => ls.setItem(DEMO_PREFIX + k, v),
+    removeItem: k => ls.removeItem(DEMO_PREFIX + k),
+    keys: () => Object.keys(ls).filter(k => k.startsWith(DEMO_PREFIX)).map(k => k.slice(DEMO_PREFIX.length)) };
+}
+// Everything this page saves in the browser goes through `store`: the browser's own storage, or in the demo the same
+// storage under the "gb-demo:" prefix. (If the browser blocks storage, `store` is null and each use fails quietly, as before.)
+let store = null;
+try { store = DEMO ? demoStorage() : window.localStorage; } catch (e) {}
+const storeKeys = () => DEMO ? store.keys() : Object.keys(store);
+
 const FIELDS = [
   ["likes", "Likes"], ["food", "Food"], ["drink", "Drink"], ["notes", "Notes"],
   ["from", "From"], ["job", "Does"], ["looks", "Looks like"], ["lastVisit", "Last visit"]
@@ -821,7 +886,7 @@ const SYNCED_KEY = "gb-synced-to-db";
 let hadLocal = false;
 function loadLocal() {
   try {
-    const s = localStorage.getItem(STORE_KEY);
+    const s = store.getItem(STORE_KEY);
     if (s) { const d = JSON.parse(s); if (Array.isArray(d)) { hadLocal = true; return d; } }
   } catch (e) {}
   return [];
@@ -835,7 +900,7 @@ function normalize(list) {
   return list;
 }
 let FAMILIES = normalize(loadLocal());
-function saveLocal() { try { localStorage.setItem(STORE_KEY, JSON.stringify(FAMILIES)); } catch (e) {} }
+function saveLocal() { try { store.setItem(STORE_KEY, JSON.stringify(FAMILIES)); } catch (e) {} }
 
 // ---- Database ----
 let db = null, live = false, canWrite = true;
@@ -881,26 +946,27 @@ let DAY_KEY = isoDay(new Date());
 let HERE_KEY = "gb-here-" + TODAY;
 let here = null, hereFromDb = false, view = "dash";
 const familiesHereToday = () => new Set(FAMILIES.filter(f => f.checkIn && f.checkIn.startsWith(TODAY) && !f.checkOut).map(f => f.id));
-try { const s = localStorage.getItem(HERE_KEY); if (s) here = new Set(JSON.parse(s)); } catch (e) {}
+try { const s = store.getItem(HERE_KEY); if (s) here = new Set(JSON.parse(s)); } catch (e) {}
 if (!here) here = familiesHereToday();
 // Each day's check-ins and here-today list are cached on the tablet; drop earlier days' copies.
 function pruneDayStorage() {
   try {
-    for (const k of Object.keys(localStorage)) {
-      if ((k.startsWith("gb-ci-") && k !== "gb-ci-" + DAY_KEY) || (k.startsWith("gb-here-") && k !== HERE_KEY)) localStorage.removeItem(k);
+    for (const k of storeKeys()) {
+      if ((k.startsWith("gb-ci-") && k !== "gb-ci-" + DAY_KEY) || (k.startsWith("gb-here-") && k !== HERE_KEY)) store.removeItem(k);
     }
   } catch (e) {}
 }
 pruneDayStorage();
-try { let v = localStorage.getItem("gb-view"); if (v === "all") v = "brief"; if (["today", "brief", "checkin", "dash"].includes(v)) view = v; } catch (e) {}
+try { let v = store.getItem("gb-view"); if (v === "all") v = "brief"; if (["today", "brief", "checkin", "dash"].includes(v)) view = v; } catch (e) {}
 function saveHere() {
-  try { localStorage.setItem(HERE_KEY, JSON.stringify([...here])); } catch (e) {}
+  try { store.setItem(HERE_KEY, JSON.stringify([...here])); } catch (e) {}
   if (!db) return;
   const ids = [...here];
   queueWrite("day", () => db.doc("days/" + DAY_KEY).set({ ids, date: TODAY })).catch(onWriteError);
 }
 
 async function connect() {
+  if (DEMO) { startDemo(); return; }
   if (STANDALONE) { startStandalone(); return; }
   try { db = await claude.use("db"); } catch (e) { db = null; }
   if (!db) {
@@ -932,7 +998,7 @@ async function connect() {
   db.doc("weather/now").onSnapshot(snap => {
     if (!snap.exists) return;
     WX = JSON.parse(JSON.stringify(snap.data()));
-    try { localStorage.setItem("gb-wx", JSON.stringify(WX)); } catch (e) {}
+    try { store.setItem("gb-wx", JSON.stringify(WX)); } catch (e) {}
     renderWx(); renderSetup();
   }, () => {});
   for (const k of ["staff", "auto"]) db.doc("lightning/" + k).onSnapshot(snap => {
@@ -956,14 +1022,14 @@ function subscribeDay() {
   dayUnsubs = [
     db.doc("setup/" + day).onSnapshot(snap => {
       SETUP = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : (snap.metadata.fromCache ? SETUP : null);
-      try { localStorage.setItem("gb-setup", JSON.stringify(SETUP)); } catch (e) {}
+      try { store.setItem("gb-setup", JSON.stringify(SETUP)); } catch (e) {}
       renderSetup();
     }, () => {}),
     db.doc("days/" + day).onSnapshot(snap => {
       if (snap.exists) {
         const ids = snap.data().ids;
         if (Array.isArray(ids)) { here = new Set(ids); hereFromDb = true; }
-        try { localStorage.setItem(HERE_KEY, JSON.stringify([...here])); } catch (e) {}
+        try { store.setItem(HERE_KEY, JSON.stringify([...here])); } catch (e) {}
         refreshSoon();
       } else if (!snap.metadata.fromCache && !hereFromDb && here.size) {
         saveHere(); // first device today publishes its list
@@ -1011,12 +1077,12 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) chec
 // First time this device connects: send up anything saved only in this browser.
 function migrateLocal(snap) {
   let done = false;
-  try { done = localStorage.getItem(SYNCED_KEY) === "1"; } catch (e) {}
-  if (done || !hadLocal || !FAMILIES.length) { try { localStorage.setItem(SYNCED_KEY, "1"); } catch (e) {} return false; }
+  try { done = store.getItem(SYNCED_KEY) === "1"; } catch (e) {}
+  if (done || !hadLocal || !FAMILIES.length) { try { store.setItem(SYNCED_KEY, "1"); } catch (e) {} return false; }
   setSync("", "Uploading this device's guests…");
   const local = FAMILIES;
   Promise.all(local.map(f => db.doc("families/" + docId(f.id)).set(famBody(f)))).then(() => {
-    try { localStorage.setItem(SYNCED_KEY, "1"); } catch (e) {}
+    try { store.setItem(SYNCED_KEY, "1"); } catch (e) {}
     toast("This device's guests are now in the database");
   }).catch(onWriteError);
   return false;
@@ -1025,7 +1091,7 @@ function migrateLocal(snap) {
 
 // ---- Weather (written to "weather/now" once an hour by a scheduled task) ----
 let WX = null;
-try { const s = localStorage.getItem("gb-wx"); if (s) WX = JSON.parse(s); } catch (e) {}
+try { const s = store.getItem("gb-wx"); if (s) WX = JSON.parse(s); } catch (e) {}
 const pct = v => (typeof v === "number" ? Math.round(v) + "%" : "—");
 const mph = v => (typeof v === "number" ? Math.round(v) + " mph" : "—");
 function renderWx() {
@@ -1055,7 +1121,7 @@ function renderWx() {
 
 // ---- Today's setup note (written to "setup/<YYYY-MM-DD>" each morning by a scheduled task) ----
 let SETUP = null;
-try { const s = localStorage.getItem("gb-setup"); if (s) { const d = JSON.parse(s); if (d && d.date === DAY_KEY) SETUP = d; } } catch (e) {}
+try { const s = store.getItem("gb-setup"); if (s) { const d = JSON.parse(s); if (d && d.date === DAY_KEY) SETUP = d; } } catch (e) {}
 // Today's setup shows on the dashboard only. The lightning alert (and storm watch) also shows on Check-in and Here now.
 const SETUP_SLOTS = ["setup"], LIGHTNING_SLOTS = ["ciLightning", "hereLightning"];
 // Levels the 6:38 AM task writes (rules in the README): protocol = steady wind above 20 mph (red);
@@ -1166,9 +1232,9 @@ function lightningAction(act) {
     : { lastStrikeAt: now, clearedAt: prev.clearedAt || null, source: "Reported on a pool tablet" };
   ltgClearArmed = 0;
   LTG.staff = body; renderSetup();
-  toast(act === "clear" ? "All clear given on every tablet" : `Lightning reported. Clear the pool.`);
+  toast((DEMO ? "Demo drill, this device only: " : "") + (act === "clear" ? "All clear given on every tablet" : `Lightning reported. Clear the pool.`));
   if (db) queueWrite("ltg", () => db.doc("lightning/staff").set(body)).catch(onWriteError);
-  else if (STANDALONE) { try { localStorage.setItem("gb-ltg-staff", JSON.stringify(body)); } catch (e) {} }
+  else if (STANDALONE) { try { store.setItem("gb-ltg-staff", JSON.stringify(body)); } catch (e) {} }
 }
 
 // ================= STANDALONE: a normal website, no Claude sign-in =================
@@ -1212,11 +1278,11 @@ function nwsHourly(series, speed) {
 }
 async function nwsForecast() {
   let urls = null;
-  try { urls = JSON.parse(localStorage.getItem("gb-nws-urls") || "null"); } catch (e) {}
+  try { urls = JSON.parse(store.getItem("gb-nws-urls") || "null"); } catch (e) {}
   if (!urls || !urls.grid) {
     const p = (await nwsJSON(`${NWS}/points/${POOL.lat},${POOL.lon}`)).properties;
     urls = { grid: p.forecastGridData, hourly: p.forecastHourly };
-    try { localStorage.setItem("gb-nws-urls", JSON.stringify(urls)); } catch (e) {}
+    try { store.setItem("gb-nws-urls", JSON.stringify(urls)); } catch (e) {}
   }
   const [grid, fc] = await Promise.all([nwsJSON(urls.grid), nwsJSON(urls.hourly).catch(() => null)]);
   const g = grid.properties;
@@ -1369,13 +1435,13 @@ async function standaloneWeatherUpdate() {
   try {
     const fc = await nwsForecast();
     WX = standaloneWeather(fc);
-    try { localStorage.setItem("gb-wx", JSON.stringify(WX)); } catch (e) {}
+    try { store.setItem("gb-wx", JSON.stringify(WX)); } catch (e) {}
     // Today's setup is worked out once a day, like the 6:38 AM task; a note made before 6:30 AM is redone after it.
     const made = SETUP && SETUP.date === DAY_KEY ? new Date(SETUP.updatedAt) : null;
     const redo = !made || (made.getHours() * 60 + made.getMinutes() < 390 && new Date().getHours() * 60 + new Date().getMinutes() >= 390);
     if (redo) {
       const note = standaloneSetup(fc);
-      if (note) { SETUP = note; try { localStorage.setItem("gb-setup", JSON.stringify(SETUP)); } catch (e) {} }
+      if (note) { SETUP = note; try { store.setItem("gb-setup", JSON.stringify(SETUP)); } catch (e) {} }
     }
   } catch (e) { /* the weather card says when its last update was */ }
   renderWx(); renderSetup();
@@ -1389,12 +1455,111 @@ function startStandalone() {
   // Ask the browser to keep this tablet's guests even when it is short of space or the site goes unused for a while.
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
   pruneProfiles();
-  try { const s = JSON.parse(localStorage.getItem("gb-ltg-staff") || "null"); if (s) LTG.staff = s; } catch (e) {}
+  try { const s = JSON.parse(store.getItem("gb-ltg-staff") || "null"); if (s) LTG.staff = s; } catch (e) {}
   standaloneWeatherUpdate(); glmCheck();
   setInterval(standaloneWeatherUpdate, 15 * 60 * 1000);
   setInterval(glmCheck, 60 * 1000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) glmCheck(); });
 }
+// ---- DEMO MODE: start, load the made-up dataset, guide, reset ----
+const DEMO_SEEDED = "demo-seeded";
+function startDemo() {
+  document.body.classList.add("demo");
+  document.title = "DEMO · Guest Book";
+  document.querySelector(".draft-tag").textContent = "DEMO";
+  document.querySelector(".draft-tag").title = "DEMO MODE: every guest is fictional. Not real hotel records.";
+  document.querySelector("header .hmeta").insertAdjacentHTML("beforeend", `<div class="demo-acts">
+    <button type="button" id="demoGuideBtn">Demo guide</button><button type="button" id="demoResetBtn">Reset demo</button></div>`);
+  document.getElementById("demoGuideBtn").addEventListener("click", openDemoGuide);
+  document.getElementById("demoResetBtn").addEventListener("click", () => openSheet({ title: "Reset the demo?", focus: false,
+    html: `<p>Every demo check-in, seat, note and change on this device goes back to the start of the demo shift.
+      Real Guest Book data is never affected.</p><button type="button" class="act solid" data-demoreset="1">Reset demo</button>`,
+    saveLabel: "Keep going", onSave() {} }));
+  let seeded = null;
+  try { seeded = store.getItem(DEMO_SEEDED); } catch (e) {}
+  if (seeded !== DAY_KEY + ":" + (DEMO_DATA.version || 1)) seedDemo();   // a new day starts a fresh demo shift
+  startStandalone();                                                      // live weather, Today's setup and lightning
+  setSync("local", "Demo data · this device only");
+  document.getElementById("saveNote").textContent = "DEMO: fictional guests, saved on this device only and kept apart from real Guest Book data.";
+  render(qEl.value);
+}
+// The dataset's dates are days from today and its times minutes ago, so the demo is a current shift whenever it opens.
+function seedDemo() {
+  const d = DEMO_DATA, now = Date.now();
+  const day = off => { const t = new Date(now); t.setHours(12, 0, 0, 0); t.setDate(t.getDate() + off); return isoDay(t); };
+  // Spread the shift's check-ins between 8 AM and now (at most five hours back), so an early demo still looks real.
+  const sinceEight = (now - new Date(new Date(now).setHours(8, 0, 0, 0))) / 6e4;
+  const span = Math.max(30, Math.min(300, sinceEight));
+  const ago = m => new Date(now - Math.max(1, Math.round(m * span / 300)) * 6e4).toISOString();
+  const copy = x => JSON.parse(JSON.stringify(x));
+  const hotel = d.hotel.map(g => Object.assign(copy(g), { src: "hotel", arrive: day(g.arrive), depart: day(g.depart), notes: g.notes || [] },
+    g.arrive === 0 ? { arriving: true } : {}));
+  const res = d.res.map(u => Object.assign(copy(u), { src: "res", notes: u.notes || [] }, typeof u.depart === "number" ? { depart: day(u.depart) } : {}));
+  ROSTER = { hotel: { date: DAY_KEY, uploadedAt: ago(300), files: ["DEMO In-House List (fictional)"], guests: hotel },
+    res: { date: DAY_KEY, uploadedAt: ago(290), files: ["DEMO Residential In-House List (fictional)"], guests: res } };
+  FAMILIES = normalize([...d.profiles, ...d.club].map(p => {
+    const f = copy(p);
+    if (Array.isArray(f.visits)) { f.visits = f.visits.map(day); f.savedAt = f.visits[0]; f.lastVisitDay = f.visits[f.visits.length - 1]; }
+    if (typeof f.archivedAt === "number") f.archivedAt = day(f.archivedAt);
+    return f;
+  }));
+  CHECKINS = {}; here = new Set(); hereFromDb = false;
+  resetMatches();
+  for (const c of d.checkins) {
+    const g = c.src === "club" ? clubGuests().find(x => x.famId === c.id) : allGuests().find(x => x.src === c.src && x.room === c.room);
+    if (!g) continue;
+    const k = gKey(g);
+    let fam = gbMatch(g), created = false;
+    if (!fam && g.src !== "club") { fam = autoProfile(g); fam.savedAt = DAY_KEY; created = true; }
+    const e = { key: k, src: g.src, room: roomLabel(g), name: gName(g), party: party(g), at: ago(c.minutesAgo), date: DAY_KEY };
+    if (c.seat) e.seat = c.seat;
+    if (fam) e.gb = fam.id;
+    if (created) e.autoGb = true;
+    if (c.need) e.need = { what: c.need.what, at: ago(Math.min(c.need.minutesAgo, c.minutesAgo - 1)) };
+    if (c.served) e.served = c.served.map(x => ({ what: x.what, askedAt: ago(x.askedMinutesAgo), doneAt: ago(x.doneMinutesAgo) }));
+    if (c.departedMinutesAgo) e.departedAt = ago(c.departedMinutesAgo);
+    CHECKINS[k] = e;
+    if (fam) {
+      if (!e.departedAt) here.add(fam.id);
+      fam.visits = [...new Set([...(fam.visits || []), DAY_KEY])];
+      fam.lastVisitDay = DAY_KEY;
+      if (c.seat) fam.lastSeat = c.seat;
+      delete fam.archived; delete fam.archivedAt;
+    }
+  }
+  resetMatches();
+  saveLocal(); saveRosterLocal(); saveCiLocal();
+  try {
+    store.setItem(HERE_KEY, JSON.stringify([...here]));
+    store.removeItem("gb-ltg-staff");
+    store.setItem(DEMO_SEEDED, DAY_KEY + ":" + (d.version || 1));
+  } catch (e) {}
+  LTG.staff = null;
+}
+function resetDemo() {
+  try { for (const k of store.keys()) store.removeItem(k); } catch (e) {}
+  location.reload();
+}
+function openDemoGuide() {
+  openSheet({ title: "Demo guide: a shift at the pool", focus: false, saveLabel: "Close",
+    html: `<p class="demo-intro">Every guest here is fictional. Walk through a shift in order, or jump to any step.</p>
+      <ol class="demo-steps">${DEMO_DATA.scenarios.map((x, i) => `<li><div><b>${esc(x.title)}</b><span>${esc(x.text)}</span></div>
+        <button type="button" class="act" data-demo="${i}">Show me</button></li>`).join("")}</ol>`,
+    onSave() {} });
+}
+function runScenario(i) {
+  const a = (DEMO_DATA.scenarios[i] || {}).action || {};
+  const find = w => w && allGuests().find(g => g.src === w.src && g.room === w.room);
+  if (a.open) { const g = find(a.open); if (g) openGuest(gKey(g)); return; }
+  if (a.view) goView(a.view);
+  if (a.pick) { const g = find(a.pick); if (g) pickGuest(gKey(g)); }
+  if (a.here === "need") {
+    const e = hereNow().filter(x => x.need).sort((x, y) => x.need.at.localeCompare(y.need.at))[0];
+    if (e) { hereOpen.add(e.key); renderHere(); }
+  }
+  scrollTo(0, 0);
+}
+
 setInterval(() => { if (ltgWasOn || lightningState()) renderSetup(); }, 15000);   // countdown, then the all clear
 setInterval(() => { if (LTG.auto) renderSetup(); }, 60000);                        // notice when the automatic check stops
 
@@ -1431,6 +1596,8 @@ function todayStatusHTML(f) {
   if (!g) return allGuests().length ? `<div class="tstat off">Not on today's hotel or residence lists</div>` : "";
   const k = gKey(g), ci = CHECKINS[k];
   const where = roomLabel(g) + " · " + (g.src === "hotel" ? "St. Regis guest" : (g.type || "Resident"));
+  if (ci && ci.departedAt) return `<div class="tstat off"><span><b>Departed ${esc(tStr(ci.departedAt))}</b> · ${esc(where)}</span>
+      <button class="mini" data-ci="${esc(k)}">Check in again</button></div>`;
   if (ci) return `<div class="tstat ${ci.need ? "need" : "in"}"><span><b>${ci.need ? "Needs " + esc(ci.need.what) : "Checked in " + esc(tStr(ci.at))}</b> · ${esc(where)}</span>
       ${ci.need ? `<button class="mini done" data-svcdone="${esc(k)}">Service provided</button>` : `<button class="mini" data-svc="${esc(k)}">Needs service</button>`}</div>`;
   const blocked = g.src === "res" && g.str;
@@ -1499,7 +1666,7 @@ function render(filter) {
   document.body.classList.toggle("wide", hereOn || dashOn || brOn);
   qEl.placeholder = "Last name or room # (e.g. 1205, C402)";
   if (hereOn) renderHere();
-  { const n = Object.keys(CHECKINS).length, nd = Object.values(CHECKINS).filter(e => e.need).length;
+  { const n = hereNow().length, nd = hereNow().filter(e => e.need).length;
     const hc = document.getElementById("hereCount"); hc.textContent = n || ""; hc.classList.toggle("alert", nd > 0);
     hc.title = nd ? nd + " need service" : ""; }
   if (ciOn) renderCheckin(filter);
@@ -1838,11 +2005,15 @@ async function readXlsx(buf, opts = {}) {
 const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/";
 let ROSTER = { hotel: null, res: null };       // { date, uploadedAt, files, guests: [] }
 let CHECKINS = {};                              // key -> entry
+// A check-in stays for the whole day. When the guest leaves the pool, Depart (on Here now) adds "departedAt", the time
+// they left: they move to Here now's Departed section and stop counting as checked in. Checking them in again clears it.
+const isHere = e => !!e && !e.departedAt;
+const hereNow = () => Object.values(CHECKINS).filter(isHere);
 let rosterLive = false;
-try { const s = localStorage.getItem("gb-roster"); if (s) { const d = JSON.parse(s); if (d && d.day === DAY_KEY) ROSTER = d.roster; } } catch (e) {}
-try { const s = localStorage.getItem("gb-ci-" + DAY_KEY); if (s) CHECKINS = JSON.parse(s) || {}; } catch (e) {}
-function saveRosterLocal() { try { localStorage.setItem("gb-roster", JSON.stringify({ day: DAY_KEY, roster: ROSTER })); } catch (e) {} }
-function saveCiLocal() { try { localStorage.setItem("gb-ci-" + DAY_KEY, JSON.stringify(CHECKINS)); } catch (e) {} }
+try { const s = store.getItem("gb-roster"); if (s) { const d = JSON.parse(s); if (d && d.day === DAY_KEY) ROSTER = d.roster; } } catch (e) {}
+try { const s = store.getItem("gb-ci-" + DAY_KEY); if (s) CHECKINS = JSON.parse(s) || {}; } catch (e) {}
+function saveRosterLocal() { try { store.setItem("gb-roster", JSON.stringify({ day: DAY_KEY, roster: ROSTER })); } catch (e) {} }
+function saveCiLocal() { try { store.setItem("gb-ci-" + DAY_KEY, JSON.stringify(CHECKINS)); } catch (e) {} }
 
 const gKey = g => g.src === "club" ? docId("c-" + g.famId) : docId((g.src === "hotel" ? "h-" : "r-") + g.room + "-" + (g.last || g.name).toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 40));
 const gName = g => g.src === "hotel" ? g.last + (g.first ? ", " + g.first : "") : g.name;
@@ -1867,7 +2038,11 @@ function lastNameCount(n) {
 // needs it for each list row and each profile card. Remember the answers until the saved profiles
 // or today's lists change (saveFamily, removeFamily, the families and roster listeners, render).
 let matchMemo = new Map(), guestForFamily = null;
-function resetMatches() { matchMemo = new Map(); guestForFamily = null; lastCountFor = null; }
+// Each profile's searchable text and each name's pattern are kept between matches too (profiles can change, so the
+// text is dropped whenever the matches are).
+let famTextMemo = new WeakMap();
+const nameRe = new Map();
+function resetMatches() { matchMemo = new Map(); guestForFamily = null; lastCountFor = null; famTextMemo = new WeakMap(); }
 function gbMatch(g) {
   if (g.src === "club") return findFam(g.famId) || null;
   const k = gKey(g);
@@ -1890,8 +2065,13 @@ function matchProfile(g) {
   let loose = null;
   for (const f of FAMILIES) {
     const fr = String(f.room || "").toLowerCase().replace(/^(rm|room)\s*/, "");
-    const fam = (f.family + " " + f.members.map(m => m.name).join(" ")).toLowerCase();
-    const hit = names.find(n => new RegExp("(^|[^a-z])" + n.replace(/[^a-z'\-]/g, "") + "([^a-z]|$)").test(fam));
+    let fam = famTextMemo.get(f);
+    if (fam === undefined) { fam = (f.family + " " + f.members.map(m => m.name).join(" ")).toLowerCase(); famTextMemo.set(f, fam); }
+    const hit = names.find(n => {
+      let re = nameRe.get(n);
+      if (!re) { re = new RegExp("(^|[^a-z])" + n.replace(/[^a-z'\-]/g, "") + "([^a-z]|$)"); nameRe.set(n, re); }
+      return re.test(fam);
+    });
     if (!hit) continue;
     if (!fr || fr === room) return f;
     if (!loose && lastNameCount(hit) === 1) loose = f;
@@ -1970,14 +2150,15 @@ function guestCard(g, opts = {}) {
   if (g.departTBD) pills.push('<span class="pill">Departure TBD</span>');
   const p = party(g); if (p) pills.push(`<span class="pill">${esc(p)}</span>`);
   if (fam) pills.push(`<span class="pill gb">In Guest Book</span>`);
-  const notes = (g.notes || []).map(n => `<div>${/birth|anniv|honeymoon|celebrat|wedding/i.test(n) ? '<span class="ntag c">Celebration</span>' : '<span class="ntag">Note</span>'}${esc(n)}</div>`).join("");
-  const btn = ci
-    ? `<button class="ci-btn done" data-ci="${esc(k)}">✓ ${esc(tStr(ci.at))}</button>`
+  const notes = (g.notes || []).map(n => WARNING.test(n) ? `<div><span class="ntag warn">Warning</span>${esc(warnText(n))}</div>`
+    : `<div>${/birth|anniv|honeymoon|celebrat|wedding/i.test(n) ? '<span class="ntag c">Celebration</span>' : '<span class="ntag">Note</span>'}${esc(n)}</div>`).join("");
+  const btn = ci && ci.departedAt ? `<button class="ci-btn again" data-ci="${esc(k)}">Check in again</button>`
+    : ci ? `<button class="ci-btn done" data-ci="${esc(k)}">✓ ${esc(tStr(ci.at))}</button>`
     : blocked ? `<button class="ci-btn anyway" data-ci="${esc(k)}">Check in anyway</button>`
     : `<button class="ci-btn" data-ci="${esc(k)}">Check in</button>`;
   const roomLbl = roomLabel(g);
   if (opts.compact) return compactCard(g, { k, ci, fam, blocked, notes, btn, roomLbl });
-  return `<div class="gcard${ci ? " in" : ""}${ci && ci.need ? " needs" : ""}${blocked && !ci ? " blocked" : ""}" data-open="${esc(k)}" tabindex="0" role="button" aria-label="Open ${esc(gName(g))}">
+  return `<div class="gcard${isHere(ci) ? " in" : ""}${isHere(ci) && ci.need ? " needs" : ""}${blocked && !ci ? " blocked" : ""}" data-open="${esc(k)}" tabindex="0" role="button" aria-label="Open ${esc(gName(g))}">
     <div class="g-top"><div class="g-who"><div class="g-name">${esc(gName(g))}</div>${(g.sharers || []).length ? `<div class="g-with">with ${esc(g.sharers.map(x => x.last).join(", "))}</div>` : ""}
       <span class="g-room${g.src === "res" ? " res" : ""}">${esc(roomLbl)}</span>
       ${ci && ci.seat ? `<div class="g-seat">${esc(seatText(ci.seat))}</div>` : ""}</div>${btn}</div>
@@ -1998,6 +2179,7 @@ function compactCard(g, { k, ci, fam, blocked, notes, btn, roomLbl }) {
   const open = ciOpen.has(k), n = (g.notes || []).length, celeb = (g.notes || []).some(x => CELEB.test(x));
   const key = [];
   if (blocked) key.push('<span class="pill no">No pool access · short-term rental</span>');
+  if ((g.notes || []).some(n => WARNING.test(n)) || famWarnings(fam).length) key.push('<span class="pill warnf">Warning on file</span>');
   if (ci && ci.seat) key.push(`<span class="pill seat">${esc(seatText(ci.seat))}</span>`);
   if (g.vipCode) key.push(`<span class="pill vip">VIP ${esc(g.vipCode)}</span>`);
   if (g.arriving) key.push('<span class="pill arr">Arriving today</span>');
@@ -2020,7 +2202,7 @@ function compactCard(g, { k, ci, fam, blocked, notes, btn, roomLbl }) {
         ${ci ? `<button class="g-link" data-seat="${esc(k)}">${ci.seat ? "Change seat" : "Add seat"}</button>` : ""}
         <button class="g-link" data-full="${esc(k)}">Full details and notes</button></div>
     </div>` : "";
-  return `<div class="gcard compact${open ? " open" : ""}${ci ? " in" : ""}${ci && ci.need ? " needs" : ""}${blocked && !ci ? " blocked" : ""}" data-expand="${esc(k)}"
+  return `<div class="gcard compact${open ? " open" : ""}${isHere(ci) ? " in" : ""}${isHere(ci) && ci.need ? " needs" : ""}${blocked && !ci ? " blocked" : ""}" data-expand="${esc(k)}"
       tabindex="0" role="button" aria-expanded="${open}" aria-label="${esc(gName(g))}, ${esc(roomLbl)}. ${open ? "Hide" : "Show"} details">
     <div class="g-top"><div class="g-who">
         <div class="g-line"><span class="g-name">${esc(gName(g))}</span><span class="g-room${g.src === "res" ? " res" : ""}">${esc(roomLbl)}</span></div>
@@ -2045,14 +2227,15 @@ function renderLists() {
     : `<div class="lists-row miss"><b>${label}</b><span>Not uploaded yet today</span></div>`;
   box.innerHTML = `<div class="lists"><div class="lists-t">Today's lists · ${esc(TODAY)}</div>
     ${row("Hotel", ROSTER.hotel, "guests")}${row("Residences", ROSTER.res, "units")}
-    <div class="acts"><button class="act solid" id="upBtn">Upload today's lists</button></div></div>`;
+    <div class="acts">${DEMO ? '<button class="act" id="upBtn" disabled>Real lists can\'t be uploaded in DEMO MODE</button>'
+      : '<button class="act solid" id="upBtn">Upload today\'s lists</button>'}</div></div>`;
 }
 const noListsHint = () => `<div class="ci-hint">Today's lists aren't uploaded yet.<div class="acts" style="max-width:340px;margin:10px auto 0">
   <button class="act solid" data-goto="brief">Go to Today's In House and Arrivals</button></div></div>`;
 function renderCheckin(q) {
   const list = document.getElementById("ciList");
   const t = (q || "").trim();
-  const n = Object.keys(CHECKINS).length;
+  const n = hereNow().length;
 
   const sel = selKey && allGuests().find(g => gKey(g) === selKey);
   if (sel) {
@@ -2087,29 +2270,85 @@ function toggleHere(k) {
 }
 function checkedCards() {
   const byKey = new Map(allGuests().map(g => [gKey(g), g]));
-  const done = Object.values(CHECKINS).sort((a, b) => (!!b.need - !!a.need) || b.at.localeCompare(a.at));
+  const done = hereNow().sort((a, b) => (!!b.need - !!a.need) || b.at.localeCompare(a.at));
   return done.map(e => {
     const g = byKey.get(e.key);
     if (!hereOpen.has(e.key)) {
       const nm = g ? guestPerson(g) : firstLast(e.name);
       return `<div class="gcard here-mini${e.need ? " needs" : ""}" data-hexpand="${esc(e.key)}" tabindex="0" role="button" aria-expanded="false"
           aria-label="${esc(nm)}${e.need ? ", needs " + esc(e.need.what) : ""}. Show details">
-        <div class="g-line"><span class="g-name">${esc(nm)}</span><span class="g-more" aria-hidden="true"></span></div></div>`;
+        <div class="g-line"><span class="g-name">${esc(nm)}</span>${departBtn(e.key, nm)}<span class="g-more" aria-hidden="true"></span></div></div>`;
     }
-    const hide = `<button class="g-link" data-hcollapse="${esc(e.key)}">Hide details</button>`;
+    const hide = `${departBtn(e.key, g ? guestPerson(g) : firstLast(e.name))}<button class="g-link" data-hcollapse="${esc(e.key)}">Hide details</button>`;
     return g ? guestCard(g, { hideBtn: hide })
       : `<div class="gcard in${e.need ? " needs" : ""}"><div class="g-top"><div class="g-who"><div class="g-name">${esc(e.name)}</div><span class="g-room">${esc(e.room)}</span>
        ${e.seat ? `<div class="g-seat">${esc(seatText(e.seat))}</div>` : ""}</div>
        <button class="ci-btn done" data-ci="${esc(e.key)}">✓ ${esc(tStr(e.at))}</button></div>${serviceHTML(e.key, e)}<div class="g-foot">${hide}</div></div>`;
   });
 }
+const departBtn = (k, nm) => `<button type="button" class="dep-btn" data-depart="${esc(k)}" aria-label="Depart ${esc(nm)}">Depart</button>`;
+// The Departed list says where each guest was sitting: the section and the chair numbers ("Section 8 • Chairs 1-8",
+// or "Chair 30" for one chair, as on the hourly checklist).
+function departedSeat(s) {
+  const sec = s && s.section ? (/^sec(tion)?\b/i.test(s.section) ? s.section : "Section " + s.section) : "";
+  const nos = s && s.chairNos ? String(s.chairNos).trim() : "";
+  const chairs = nos ? (/[,&\s\-–]/.test(nos) ? "Chairs " : "Chair ") + nos : "";
+  return [sec, chairs].filter(Boolean).join(" • ") || "No seat recorded";
+}
+function departedHTML() {
+  const byKey = new Map(allGuests().map(g => [gKey(g), g]));
+  const gone = Object.values(CHECKINS).filter(e => e.departedAt).sort((a, b) => b.departedAt.localeCompare(a.departedAt));
+  return `<section class="dep-sec" aria-label="Departed today"><div class="here-h"><b>Departed · ${gone.length}</b></div>` +
+    (gone.length ? `<div class="dep-list">${gone.map(e => { const g = byKey.get(e.key);
+        return `<div class="dep-row">
+          <div class="dep-l1"><span class="dep-name">${esc(g ? guestPerson(g) : firstLast(e.name))}</span><span class="dep-time">Departed ${esc(tStr(e.departedAt))}</span></div>
+          <div class="dep-l2"><span class="dep-room">${esc(e.room)}</span><span class="dep-seat">${esc(departedSeat(e.seat))}</span>
+            <button type="button" class="g-link" data-undepart="${esc(e.key)}">Undo</button></div></div>`; }).join("")}</div>`
+      : `<div class="ci-hint">Nobody has departed yet. Tap the red Depart button when a guest leaves the pool.</div>`) + `</section>`;
+}
+// Pool Number: the chairs entered for everyone checked in now (departed guests don't count). It is worked out from the
+// check-ins each time Here now is drawn, so it follows every check-in, seat change, departure and other tablet's update.
+const chairsOf = e => { const c = e && e.seat ? Number(e.seat.chairs) : NaN; return e && e.seat && e.seat.chairs !== "" && Number.isFinite(c) ? c : null; };
+function poolNumberHTML(all) {
+  const total = all.reduce((n, e) => n + (chairsOf(e) || 0), 0), missing = all.filter(e => chairsOf(e) === null).length;
+  return `<div class="pool-num" id="poolNum" aria-live="polite"><span>Pool Number:</span><b>${total}</b>
+    <small>chairs entered for ${all.length} checked-in ${all.length === 1 ? "party" : "parties"}${missing
+      ? ` · <span class="pool-miss">${missing} with no chairs entered</span>` : ""}</small></div>`;
+}
 function renderHere() {
   noteNewCheckins();
-  const all = Object.values(CHECKINS), needN = all.filter(e => e.need).length;
-  document.getElementById("hereMain").innerHTML = `<div class="here-h"><b>Checked in now · ${all.length}</b>${needN ? `<span class="need-n">${needN} need service</span>` : ""}</div>` +
+  const all = hereNow(), needN = all.filter(e => e.need).length, anyToday = Object.keys(CHECKINS).length;
+  document.getElementById("hereMain").innerHTML = poolNumberHTML(all) + `<div class="here-h"><b>Checked in now · ${all.length}</b>${needN ? `<span class="need-n">${needN} need service</span>` : ""}</div>` +
     (all.length ? checkedCards().join("")
-      : `<div class="ci-hint">Nobody is checked in yet today.<div class="acts" style="max-width:300px;margin:10px auto 0"><button class="act solid" data-goto="checkin">Find a guest to check in</button></div></div>`);
+      : anyToday ? `<div class="ci-hint">Everyone checked in today has departed.</div>`
+      : `<div class="ci-hint">Nobody is checked in yet today.<div class="acts" style="max-width:300px;margin:10px auto 0"><button class="act solid" data-goto="checkin">Find a guest to check in</button></div></div>`) +
+    (anyToday ? departedHTML() : "");
   renderChecklist();
+}
+// Depart (the red button): the guest left the pool. The check-in stays as today's record, with the time they left.
+function departGuest(k) {
+  const cur = CHECKINS[k]; if (!cur || cur.departedAt) return;
+  cur.departedAt = new Date().toISOString();
+  hereOpen.delete(k);
+  if (cur.gb && here.has(cur.gb)) { here.delete(cur.gb); saveHere(); }
+  writeCi(k, cur);
+  toast(`${firstLast(cur.name)} departed at ${tStr(cur.departedAt)}`);
+  render(qEl.value);
+}
+// Undo (tapped Departed by mistake): back to checked in, as if they never left.
+function undoDeparted(k) {
+  const cur = CHECKINS[k]; if (!cur || !cur.departedAt) return;
+  delete cur.departedAt;
+  if (cur.gb && !here.has(cur.gb)) { here.add(cur.gb); saveHere(); }
+  writeCi(k, cur); toast(`${firstLast(cur.name)} is back under Checked in now`); render(qEl.value);
+}
+// Check in again (left and came back the same day): back to checked in, keeping when they were away.
+function checkInAgain(k) {
+  const cur = CHECKINS[k]; if (!cur || !cur.departedAt) return;
+  cur.returns = [...(Array.isArray(cur.returns) ? cur.returns : []), { departedAt: cur.departedAt, backAt: new Date().toISOString() }];
+  delete cur.departedAt;
+  if (cur.gb && !here.has(cur.gb)) { here.add(cur.gb); saveHere(); }
+  writeCi(k, cur); toast(`✓ ${firstLast(cur.name)} checked in again`); render(qEl.value);
 }
 
 // ---- Hourly checklist (text to paste into WhatsApp) ----
@@ -2143,11 +2382,11 @@ function checklistLines(rows) {
 function checklistText(rows) {
   if (!rows) {
     const byKey = new Map(allGuests().map(g => [gKey(g), g]));
-    rows = Object.values(CHECKINS).sort((a, b) => a.at.localeCompare(b.at))
+    rows = hereNow().sort((a, b) => a.at.localeCompare(b.at))
       .map(e => { const g = byKey.get(e.key); return { name: shortLast(e, g), room: roomShort(e, g), need: e.need, seat: e.seat }; });
   }
   const lines = checklistLines(rows);
-  return `*${hourLabel(new Date())} Guest/Resident Check In*\n(🚫): In need of Service\n(✅): Service Provided\n\n*Main Pool*\n` + (lines.length ? lines.join("\n") : "No guest");
+  return (DEMO ? "*DEMO – FICTIONAL GUESTS*\n" : "") + `*${hourLabel(new Date())} Guest/Resident Check In*\n(🚫): In need of Service\n(✅): Service Provided\n\n*Main Pool*\n` + (lines.length ? lines.join("\n") : "No guest");
 }
 // Example only: 42 made-up parties, 3 needing water & food, 2 needing a server. Never saved anywhere.
 function exampleRows() {
@@ -2179,6 +2418,7 @@ function renderChecklist() {
 const NEEDS = ["Water", "Food", "Server", "Towels", "Chairs / umbrella", "Cleanup"];
 function serviceHTML(k, ci) {
   if (!ci) return "";
+  if (ci.departedAt) return `<div class="svc left"><span>Departed ${esc(tStr(ci.departedAt))}</span></div>`;
   return ci.need
     ? `<div class="svc need"><span>Needs ${esc(ci.need.what)} · since ${esc(tStr(ci.need.at))}</span><button class="svc-btn ok" data-svcdone="${esc(k)}">Service provided</button></div>`
     : `<div class="svc"><span>Service provided</span><button class="svc-btn" data-svc="${esc(k)}">Needs service</button></div>`;
@@ -2260,11 +2500,14 @@ function openGuest(k) {
   detailKey = k;
   const fam = g ? gbMatch(g) : (ci && ci.gb ? findFam(ci.gb) : null);
   const notes = (g && g.notes) || [];
-  const celeb = notes.filter(n => CELEB.test(n));
+  const celeb = notes.filter(n => CELEB.test(n) && !WARNING.test(n));
+  // the same warning on today's list and from a past visit shows once
+  const warns = [...notes.filter(n => WARNING.test(n)).map(t => ({ text: warnText(t), from: "Hotel notes" })), ...famWarnings(fam)]
+    .filter((w, i, all) => all.findIndex(x => x.text === w.text) === i);
   const log = (ci && ci.log) || [];
   const complaints = [...notes.filter(n => COMPLAINT.test(n)).map(t => ({ text: t, from: "Hotel notes" })),
     ...log.filter(x => x.type === "complaint").map(x => ({ text: x.text, from: tStr(x.at) }))];
-  const other = notes.filter(n => !CELEB.test(n) && !COMPLAINT.test(n));
+  const other = notes.filter(n => !CELEB.test(n) && !COMPLAINT.test(n) && !WARNING.test(n));
   const row = (label, val, cls = "") => val ? `<div class="ov-row ${cls}"><span>${label}</span><b>${val}</b></div>` : "";
   const blocked = g && g.src === "res" && g.str;
   const n = g ? nights(g.arrive, g.depart) : null;
@@ -2272,6 +2515,7 @@ function openGuest(k) {
   const badges = [];
   if (g && g.vipCode) badges.push(`<span class="ov-badge vip">VIP ${esc(g.vipCode)}</span>`);
   if (blocked) badges.push('<span class="ov-badge no">No pool access · short-term rental</span>');
+  if (warns.length) badges.push('<span class="ov-badge no">Warning on file</span>');
   if (celeb.length) badges.push('<span class="ov-badge cel">Celebrating</span>');
   if (complaints.length) badges.push(`<span class="ov-badge no">${complaints.length} complaint${complaints.length === 1 ? "" : "s"}</span>`);
   if (g && g.arriving) badges.push('<span class="ov-badge arr">Arriving today</span>');
@@ -2288,9 +2532,11 @@ function openGuest(k) {
       ${row("Nights", n ? String(n) : "")}
       ${row("Party", g ? party(g) || "—" : esc(ci.party || ""))}
       ${row("Pool check-in", ci ? tStr(ci.at) : "Not checked in", ci ? "ok" : "")}
+      ${row("Departed", ci && ci.departedAt ? tStr(ci.departedAt) : "", "warn")}
       ${row("Service", ci ? (ci.need ? "Needs " + esc(ci.need.what) + " since " + tStr(ci.need.at) : "Provided") : "", ci && ci.need ? "bad" : "")}
       ${row("Seat", ci && ci.seat ? esc(seatText(ci.seat)) : "")}
     </div>
+    ${sec("Warnings on file", warns.length ? list(warns.map(w => `${esc(w.text)} <small>${esc(w.from)}</small>`), "bad") : "")}
     ${sec("Celebrations", celeb.length ? list(celeb.map(esc), "cel") : "")}
     ${sec("Complaints", complaints.length ? list(complaints.map(c => `${esc(c.text)} <small>${esc(c.from)}</small>`), "bad") : "")}
     ${sec("Notes", other.length || log.some(x => x.type !== "complaint") ? list([...other.map(esc), ...log.filter(x => x.type !== "complaint").map(x => `${esc(x.text)} <small>${esc(tStr(x.at))}</small>`)]) : "")}
@@ -2306,8 +2552,10 @@ function openGuest(k) {
     <div class="ov-acts">
       ${!ci && g ? `<button type="button" class="act solid" data-ci="${esc(k)}">${blocked ? "Check in anyway" : "Check in"}</button>` : ""}
       ${ci ? `<button type="button" class="act" data-seat="${esc(k)}">${ci.seat ? "Change seat" : "Add seat"}</button>` : ""}
-      ${ci && !ci.need ? `<button type="button" class="act" data-svc="${esc(k)}">Needs service</button>` : ""}
-      ${ci && ci.need ? `<button type="button" class="act solid" data-svcdone="${esc(k)}">Service provided</button>` : ""}
+      ${ci && ci.departedAt ? `<button type="button" class="act solid" data-ci="${esc(k)}">Check in again</button>` : ""}
+      ${isHere(ci) && !ci.need ? `<button type="button" class="act" data-svc="${esc(k)}">Needs service</button>` : ""}
+      ${isHere(ci) && ci.need ? `<button type="button" class="act solid" data-svcdone="${esc(k)}">Service provided</button>` : ""}
+      ${isHere(ci) ? `<button type="button" class="act dep" data-depart="${esc(k)}">Depart</button>` : ""}
     </div>`;
   openSheet({ title: g ? gName(g) : ci.name, html, focus: false, saveLabel: "Done", onSave() { detailKey = null; } });
 }
@@ -2326,9 +2574,15 @@ setInterval(() => { const h = new Date().getHours(); if (h !== clHour) { clHour 
 
 // ---- Dashboard ----
 const CELEB = /birth|anniv|honeymoon|celebrat|wedding/i;
+// A note that starts with "Warning:" is something already on file to watch for (say, bringing outside food and drinks).
+// It can be on today's list or on a saved profile from past visits.
+const WARNING = /^Warning:\s*/i;
+const warnText = t => { const x = String(t).replace(WARNING, ""); return x.charAt(0).toUpperCase() + x.slice(1); };
+const famWarnings = f => f ? f.members.flatMap(m => [m.followUp, m.notes].filter(x => WARNING.test(x || ""))
+  .map(t => ({ text: warnText(t), from: "Past visits · " + m.name }))) : [];
 function renderDash() {
   document.getElementById("dashDate").textContent = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-  const all = Object.values(CHECKINS), need = all.filter(e => e.need).sort((a, b) => a.need.at.localeCompare(b.need.at));
+  const all = hereNow(), need = all.filter(e => e.need).sort((a, b) => a.need.at.localeCompare(b.need.at));
   const H = ROSTER.hotel?.guests || [], R = ROSTER.res?.guests || [];
   const has = H.length || R.length;
   const k = (label, val, go, cls = "") => `<button class="kpi ${cls}" data-goto="${go}"><span>${label}</span><b>${val}</b></button>`;
@@ -2363,7 +2617,8 @@ function briefRow(g) {
   const pf = gbMatch(g);
   if (pf) pills.push(`<span class="pill gb">Preferences saved</span>`);
   const note = (g.notes || []).length ? `<div class="br-note">${g.notes.map(esc).join(" · ")}</div>` : "";
-  const btn = ci ? `<button class="mini done" data-ci="${esc(k)}">✓ ${esc(tStr(ci.at))}</button>`
+  const btn = ci && ci.departedAt ? `<button class="mini" data-ci="${esc(k)}">Check in again</button>`
+    : ci ? `<button class="mini done" data-ci="${esc(k)}">✓ ${esc(tStr(ci.at))}</button>`
     : `<button class="mini${blocked ? " no" : ""}" data-ci="${esc(k)}">${blocked ? "Anyway" : "Check in"}</button>`;
   return `<div class="brow" data-open="${esc(k)}" tabindex="0" role="button"><span class="br-room${g.src === "res" ? " res" : ""}">${esc(g.src === "hotel" ? (g.room || "TBA") : g.room)}</span>
     <div class="br-who"><div class="br-name">${esc(gName(g))}${(g.sharers || []).length ? ` <small class="sg-with">& ${esc(g.sharers.map(x => x.last).join(", "))}</small>` : ""}</div>${pills.length ? `<div class="pills">${pills.join("")}</div>` : ""}${note}</div>${btn}</div>`;
@@ -2411,6 +2666,7 @@ function writeCi(k, entry) {
 }
 function toggleCheckin(k) {
   const g = allGuests().find(x => gKey(x) === k);
+  if (CHECKINS[k] && CHECKINS[k].departedAt) { checkInAgain(k); return; }
   if (CHECKINS[k]) {
     const e = CHECKINS[k];
     openSheet({ title: "Undo check-in?", focus: false,
@@ -2584,6 +2840,7 @@ async function readPdfPages(buf) {
 const slim = g => { const o = {}; for (const [k, v] of Object.entries(g)) if (v !== "" && v !== null && v !== false && !(Array.isArray(v) && !v.length)) o[k] = v; return o; };
 
 async function handleFiles(files) {
+  if (DEMO) { toast("Uploading real lists is turned off in DEMO MODE"); return; }
   const found = { hotel: null, res: null }, problems = [];
   openSheet({ title: "Reading lists…", focus: false, html: '<p class="ci-hint">Reading the files on this tablet…</p>', saveLabel: "Wait", onSave() { return "Still reading — one moment."; } });
   for (const f of files) {
@@ -2648,6 +2905,9 @@ function toast(msg) {
 // ---- Edit sheet ----
 const sheetBg = document.getElementById("sheetBg");
 document.getElementById("sheetBody").addEventListener("click", e => {
+  const dm = e.target.closest("[data-demo]"); if (dm) { closeSheet(); runScenario(+dm.dataset.demo); return; }
+  const dp = e.target.closest("[data-depart]"); if (dp) { detailKey = null; closeSheet(); departGuest(dp.dataset.depart); return; }
+  if (e.target.closest("[data-demoreset]")) { resetDemo(); return; }
   const add = e.target.closest("[data-ovadd]"); if (add) { addLog(add.dataset.ovadd); return; }
   const pf = e.target.closest("[data-prefs]"); if (pf) { const k = pf.dataset.prefs; detailKey = k; editPrefs(k); return; }
   const c = e.target.closest("[data-ci]"); if (c) { const k = c.dataset.ci; detailKey = null; closeSheet(); toggleCheckin(k); if (CHECKINS[k]) openGuest(k); return; }
@@ -2804,7 +3064,7 @@ function editMember(f, m, prefillName) {
 
 // ---- Backup ----
 document.getElementById("copyBk").addEventListener("click", async () => {
-  const json = JSON.stringify(FAMILIES, null, 1);
+  const json = JSON.stringify(DEMO ? { demo: true, note: "DEMO MODE backup: fictional guests only", families: FAMILIES } : FAMILIES, null, 1);
   try { await navigator.clipboard.writeText(json); toast("Backup copied — paste it somewhere safe"); }
   catch (e) {
     openSheet({ title: "Copy backup", focus: false,
@@ -2820,6 +3080,10 @@ document.getElementById("restoreBk").addEventListener("click", () => {
     onSave(v) {
       let d;
       try { d = JSON.parse(v.bk); } catch (e) { return "That doesn't look like a backup."; }
+      if (DEMO) {
+        if (!(d && d.demo === true && Array.isArray(d.families))) return "This is the DEMO. It only takes demo backups, so real guest data never mixes in.";
+        d = d.families;
+      } else if (d && d.demo === true) return "That's a DEMO backup with fictional guests. It can't go into the real Guest Book.";
       if (!Array.isArray(d) || !d.every(f => f && typeof f.family === "string" && Array.isArray(f.members)))
         return "That doesn't look like a backup.";
       const incoming = normalize(d);
@@ -2871,14 +3135,14 @@ function pickGuest(k) {
   selKey = k;
   qEl.value = gName(g) + " · " + roomLabel(g);
   suggEl.hidden = true; qEl.setAttribute("aria-expanded", "false");
-  if (view !== "checkin") { view = "checkin"; try { localStorage.setItem("gb-view", view); } catch (e) {} }
+  if (view !== "checkin") { view = "checkin"; try { store.setItem("gb-view", view); } catch (e) {} }
   render(qEl.value);
   qEl.blur();
 }
 function clearSearch() { selKey = null; qEl.value = ""; suggEl.hidden = true; render(""); }
 qEl.addEventListener("input", () => {
   selKey = null;
-  if (view === "today" && qEl.value.trim()) { view = "checkin"; try { localStorage.setItem("gb-view", view); } catch (e) {} }
+  if (view === "today" && qEl.value.trim()) { view = "checkin"; try { store.setItem("gb-view", view); } catch (e) {} }
   render(qEl.value); showSugg();
 });
 qEl.addEventListener("focus", () => { if (!selKey) showSugg(); });
@@ -2937,16 +3201,16 @@ for (const listId of ["list", "clubList", "archList"]) document.getElementById(l
 });
 function openFamily(id) {
   const f = findFam(id); if (!f) return;
-  view = "brief"; try { localStorage.setItem("gb-view", view); } catch (e) {}
+  view = "brief"; try { store.setItem("gb-view", view); } catch (e) {}
   selKey = null; qEl.value = f.family; forceOpen.add(f.id); render(qEl.value); scrollTo(0, 0);
 }
-function goView(v) { view = v; try { localStorage.setItem("gb-view", v); } catch (e) {} selKey = null; qEl.value = ""; render(""); }
+function goView(v) { view = v; try { store.setItem("gb-view", v); } catch (e) {} selKey = null; qEl.value = ""; render(""); }
 document.getElementById("brief").addEventListener("toggle", e => {
   const d = e.target; if (d.dataset && d.dataset.sec) d.open ? briefOpen.add(d.dataset.sec) : briefOpen.delete(d.dataset.sec);
 }, true);
 for (const id of ["checkin", "brief", "hereView", "dashView"]) document.getElementById(id).addEventListener("click", e => {
   const lt = e.target.closest("[data-ltg]"); if (lt) { lightningAction(lt.dataset.ltg); return; }
-  if (e.target.closest("#upBtn")) { document.getElementById("listFiles").click(); return; }
+  if (e.target.closest("#upBtn")) { if (DEMO) { toast("Uploading real lists is turned off in DEMO MODE"); return; } document.getElementById("listFiles").click(); return; }
   if (e.target.closest("#clEx")) { showExample = !showExample; renderChecklist(); return; }
   const sv = e.target.closest("[data-svc]"); if (sv) { askService(sv.dataset.svc); return; }
   const sd = e.target.closest("[data-svcdone]"); if (sd) { serviceDone(sd.dataset.svcdone); return; }
@@ -2963,6 +3227,8 @@ for (const id of ["checkin", "brief", "hereView", "dashView"]) document.getEleme
   const pf = e.target.closest("[data-prefs]"); if (pf) { editPrefs(pf.dataset.prefs); return; }
   const full = e.target.closest("[data-full]"); if (full) { openGuest(full.dataset.full); return; }
   const st = e.target.closest("[data-seat]"); if (st) { changeSeat(st.dataset.seat); return; }
+  const dp = e.target.closest("[data-depart]"); if (dp) { departGuest(dp.dataset.depart); return; }
+  const ud = e.target.closest("[data-undepart]"); if (ud) { undoDeparted(ud.dataset.undepart); return; }
   const hc = e.target.closest("[data-hcollapse]"); if (hc) { toggleHere(hc.dataset.hcollapse); return; }
   const hx = e.target.closest("[data-hexpand]"); if (hx) { toggleHere(hx.dataset.hexpand); return; }
   const ex = e.target.closest("[data-expand]");
